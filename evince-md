@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import tempfile
+import time
+
+metadata = os.path.expanduser("~/.config/evince-md/metadata.yml")
+
+def recompile(infile, outfile, force=False):
+    intime = 1
+    outtime = 0
+
+    if not force:
+        outtime = os.path.getmtime(outfile)
+        intime = os.path.getmtime(infile)
+
+    if intime < outtime:
+        return
+
+    cmd = ["pandoc", "-f", "gfm", "-o", outfile, infile]
+    if os.path.isfile(metadata):
+        cmd.append("--metadata-file=" + metadata)
+
+    subprocess.call(cmd)
+
+
+def main(argv):
+    with tempfile.NamedTemporaryFile(suffix=".pdf") as tmp:
+        recompile(argv[0], tmp.name, force=True)
+        p = subprocess.Popen(["evince", tmp.name])
+        while p.poll() is None:
+            time.sleep(1)
+            recompile(argv[0], tmp.name)
+
+    exit(p.poll())
+
+
+if __name__ == "__main__":
+    main(os.sys.argv[1:])
